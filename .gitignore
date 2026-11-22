@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data/*.db
+data/*.log*
+data/sessions/
+assets/models/*.task
+out/
+mutants/
+.mutmut-cache
+.coverage
+htmlcov/
+*.egg-info/

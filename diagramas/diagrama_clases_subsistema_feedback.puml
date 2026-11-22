@@ -1,0 +1,69 @@
+@startuml clases_feedback
+allowmixing
+title Diagrama de clases de diseño — subsistema de feedback
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+skinparam ArtifactBackgroundColor #FFFFFF
+skinparam ArtifactBorderColor #555555
+hide empty members
+
+class FeedbackEngine {
+  - cooldown_s: float
+  - min_consecutive_frames: int
+  - positive_score_threshold: float
+  --
+  + process(analysis_result): FeedbackResult
+  + notify_not_evaluable(): FeedbackResult
+  + notify_hold_ended(mean_score): FeedbackResult
+  + reset()
+}
+
+class FeedbackResult <<dataclass>> {
+  + message_text: str [0..1]
+}
+
+class AudioPlayer {
+  - audio_dir: str
+  --
+  + initialize()
+  + play(filename)
+  + set_volume(volume)
+  + close()
+  + is_available: bool
+  + is_playing: bool
+}
+
+class AnalysisResult <<dataclass>> {
+}
+
+enum TechnicalError {
+}
+
+artifact "feedback_messages.json" as Catalogo
+artifact "locuciones (.mp3)" as Audios
+
+FeedbackEngine "1" *-- AudioPlayer
+FeedbackEngine ..> FeedbackResult : <<create>>
+FeedbackEngine ..> AnalysisResult : <<use>>
+FeedbackEngine ..> Catalogo : lee
+AudioPlayer ..> Audios : reproduce
+FeedbackResult --> "0..1" TechnicalError
+Catalogo ..> Audios : genera\n(previo al despliegue)
+
+note right of AnalysisResult : Definida en el diagrama\ndel núcleo de análisis
+
+note bottom of Catalogo
+  Fuente única de los textos: el mismo archivo que
+  consulta el motor en ejecución es el que emplea la
+  herramienta de síntesis, de modo que texto y audio
+  no pueden divergir (apartado 4.5.1).
+end note
+
+@enduml

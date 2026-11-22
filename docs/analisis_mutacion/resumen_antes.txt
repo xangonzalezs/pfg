@@ -1,0 +1,3 @@
+mutmut 3.8.1 sobre core/analysis, 886 pruebas
+1159 mutantes   muertos 1022   supervivientes 137   (88,2 %)
+123 mutaciones/segundo

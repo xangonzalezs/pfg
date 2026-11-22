@@ -1,0 +1,101 @@
+@startuml dominio
+title Modelo de dominio
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam nodesep 50
+skinparam ranksep 70
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 9
+skinparam ArrowFontColor #333333
+skinparam class {
+  BorderColor #555555
+  FontSize 11
+  FontColor #000000
+  AttributeFontSize 10
+  AttributeFontColor #000000
+}
+hide circle
+hide methods
+
+class "Usuario" as Usuario #F2F2F2 {
+  nombre de usuario
+  nombre completo
+  correo electrónico
+  credencial
+  rol
+  fecha de alta
+}
+
+class "Calibración" as Calibracion #F2F2F2 {
+  fecha de realización
+  estado
+  ángulo neutro de rodilla
+  ángulo neutro de arqueo dorsal
+  ángulo neutro de codo
+  proporción pierna-tronco
+  proporción de anchura de hombros
+  fecha de validación
+  observación de la decisión
+  imágenes de pose neutra
+}
+
+class "Umbral ajustado" as Umbral #F2F2F2 {
+  parámetro
+  valor
+}
+
+class "Sesión" as Sesion #F2F2F2 {
+  fecha y hora
+  duración total
+  tiempo total de sostén
+  número de intentos
+  puntuación media de alineación
+  modo de vista
+  umbrales aplicados
+}
+
+class "Error registrado" as ErrorReg #F2F2F2 {
+  tipo de error
+  valor medido
+  umbral aplicado
+  instante
+}
+
+class "Ejercicio correctivo" as Ejercicio #DCE9F5 {
+  nombre
+  descripción
+  tipo de error asociado
+}
+
+class "Propuesta de ejercicio" as Asignacion #DCE9F5 {
+  fecha de propuesta
+  estado
+}
+
+class "Comentario" as Comentario #DCE9F5 {
+  fecha y hora
+  texto
+}
+
+Usuario "0..1" -- "0..*" Usuario : supervisa >
+
+Usuario "1" -- "0..*" Calibracion : realiza >
+Usuario "0..1" -- "0..*" Calibracion : valida >
+Usuario "1" -- "0..*" Sesion : ejecuta >
+Sesion "1" -- "0..*" ErrorReg : registra >
+Calibracion "1" -- "0..*" Umbral : ajusta >
+
+Usuario "1" -- "0..*" Asignacion : asigna >
+Usuario "1" -- "0..*" Asignacion : recibe >
+Asignacion "0..*" -- "1" Ejercicio : referencia >
+Asignacion "1" -- "0..*" Comentario : origina >
+Usuario "1" -- "0..*" Comentario : redacta >
+
+legend right
+  Alcance (apartado 3.9)
+  |<#F2F2F2> Núcleo y soporte |
+  |<#DCE9F5> Visión ampliada |
+endlegend
+
+@enduml

@@ -1,0 +1,257 @@
+@startuml clases_analisis
+title Diagrama de clases de diseño — núcleo de análisis
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide empty members
+
+class HandstandAnalyzer {
+  + {static} from_thresholds(thresholds, view_mode): HandstandAnalyzer
+  + analyze(landmark_result): AnalysisResult
+  + set_view_mode(view_mode)
+  + apply_thresholds(thresholds)
+  + reset()
+  + view_mode: ViewMode
+  + handstand_state: HandstandState
+}
+
+class HandstandDetector {
+  + update(landmark_result): HandstandState
+  + reset()
+  + in_handstand: bool
+}
+
+class HandstandState <<dataclass>> {
+  + is_inverted: bool
+  + in_handstand: bool
+  + body_length: float [0..1]
+  + tilt_deg: float [0..1]
+  + confirming_frames: int
+  --
+  + is_confirming: bool
+}
+
+class HandstandThresholds <<dataclass>> {
+  + order_margin: float
+  + min_body_length: float
+  + max_tilt_deg: float
+  + confirmation_frames: int
+  + grace_frames: int
+}
+
+class AlignmentAnalyzer {
+  + view_mode: ViewMode
+  --
+  + analyze(landmark_result): AlignmentReport
+  + set_view_mode(view_mode)
+}
+
+class StabilityAnalyzer {
+  + update(landmark_result): StabilityResult
+  + reset()
+  + history_size: int
+  + reference: ReferencePoint [0..1]
+}
+
+class ErrorSelector {
+  + select(severities): TechnicalError [*]
+  + reset()
+  + is_active(error): bool
+  + relevant_errors: TechnicalError [*]
+  + view_mode: ViewMode
+  + {static} severity_from_metric(value, threshold, noise): float
+}
+
+class AlignmentThresholds <<dataclass>> {
+  + segment_weights: dict
+  + noise_threshold_deg: float
+  + max_segment_deviation_deg: float
+  + score_exponent: float
+  + min_trunk_length: float
+  + min_pair_width: float
+  + parameters: dict
+}
+
+class ParameterThreshold <<dataclass>> {
+  + threshold: float
+  + noise: float
+}
+
+class ErrorMeasurement <<dataclass>> {
+  + error_type: TechnicalError
+  + measured_value: float
+  + threshold_value: float
+  + severity: float
+  --
+  + to_detected_error(): DetectedError
+}
+
+class StabilityThresholds <<dataclass>> {
+  + window_size: int
+  + instability_threshold: float
+  + noise: float
+}
+
+class ErrorSelectionThresholds <<dataclass>> {
+  + min_severity_to_report: float
+  + hysteresis_factor: float
+}
+
+class landmarks <<utility>> {
+  + {static} as_point(landmark): Point
+  + {static} visible(result, index): Landmark [0..1]
+  + {static} visible_pair(result, left, right): Landmark [0..2]
+  + {static} joint_point(result, joint): Point [0..1]
+  + {static} joint_points(result): Point [0..*]
+}
+
+class geometry <<utility>> {
+  + {static} midpoint(a, b): Point
+  + {static} centroid(points): Point
+  + {static} distance(a, b): float
+  + {static} angle_at(vertex, a, b): float [0..1]
+  + {static} deviation_from_vertical(top, bottom): float
+  + {static} deviation_from_horizontal(a, b): float
+  + {static} distance_to_line(point, start, end): float
+}
+
+class LandmarkResult <<dataclass>> {
+  + timestamp_ms: int
+  --
+  + get_landmark(index): Landmark [0..1]
+  + has_detection: bool
+}
+
+class Landmark <<dataclass>> {
+  + index: int
+  + x, y, z: float
+  + visibility: float
+}
+
+class AnalysisResult <<dataclass>> {
+  + alignment_score: float [0..1]
+  + in_handstand: bool
+  + segment_deviations: dict
+  --
+  + has_errors: bool
+  + error_types: TechnicalError [*]
+  + is_valid: bool
+}
+
+class DetectedError <<dataclass>> {
+  + error_type: TechnicalError
+  + measured_value: float
+  + threshold_value: float
+}
+
+class AlignmentReport <<dataclass>> {
+  + score: float [0..1]
+  + segment_deviations: dict
+  + measurements: dict
+  --
+  + is_evaluable: bool
+  + severities: dict
+}
+
+class StabilityResult <<dataclass>> {
+  + is_unstable: bool
+  + dispersion: float [0..1]
+  + threshold: float
+  + history_size: int
+  + reference: ReferencePoint [0..1]
+  + measurement: ErrorMeasurement [0..1]
+  --
+  + is_evaluable: bool
+}
+
+enum TechnicalError {
+  BACK_ARCH
+  PELVIS_POSITION
+  LEGS_NOT_STRAIGHT
+  HEAD_FORWARD
+  ELBOW_NOT_EXTENDED
+  NO_SHRUG
+  LEFT_SHOULDER_LOW
+  RIGHT_SHOULDER_LOW
+  LEFT_HIP_LOW
+  RIGHT_HIP_LOW
+  FEET_NOT_EXTENDED
+  INSTABILITY
+}
+
+enum ReferencePoint {
+  HIPS
+  LEFT_HIP
+  RIGHT_HIP
+  SHOULDERS
+  LEFT_SHOULDER
+  RIGHT_SHOULDER
+}
+
+enum ViewMode {
+  LATERAL
+  FRONTAL
+}
+
+' Apilado vertical para contener el ancho del diagrama
+AlignmentThresholds -[hidden]down- StabilityThresholds
+StabilityThresholds -[hidden]down- ErrorSelectionThresholds
+
+' Criterio de las relaciones: composición cuando el objeto crea y posee
+' al otro; asociación cuando el tipo forma parte de su estado, incluidos
+' los enumerados; y dependencia únicamente para usar o crear algo que no
+' se conserva.
+HandstandAnalyzer "1" *-- HandstandDetector
+HandstandAnalyzer "1" *-- AlignmentAnalyzer
+HandstandAnalyzer "1" *-- StabilityAnalyzer
+HandstandAnalyzer "1" *-- ErrorSelector
+AlignmentAnalyzer "1" *-- AlignmentThresholds
+StabilityAnalyzer "1" *-- StabilityThresholds
+ErrorSelector "1" *-- ErrorSelectionThresholds
+
+HandstandDetector "1" *-- HandstandThresholds
+HandstandDetector ..> HandstandState : <<create>>
+HandstandDetector ..> geometry : <<use>>
+HandstandDetector ..> landmarks : <<use>>
+HandstandAnalyzer --> "1" HandstandState
+AlignmentAnalyzer ..> geometry : <<use>>
+AlignmentAnalyzer ..> landmarks : <<use>>
+landmarks ..> geometry : <<use>>
+AlignmentAnalyzer ..> AlignmentReport : <<create>>
+AlignmentAnalyzer ..> ErrorMeasurement : <<create>>
+AlignmentAnalyzer --> "1" ViewMode
+AlignmentThresholds "1" *-- "10" ParameterThreshold
+AlignmentReport --> "0..*" ErrorMeasurement
+ErrorMeasurement --> "1" TechnicalError
+ErrorMeasurement ..> DetectedError : <<create>>
+StabilityAnalyzer ..> geometry : <<use>>
+StabilityAnalyzer ..> landmarks : <<use>>
+StabilityAnalyzer ..> StabilityResult : <<create>>
+StabilityAnalyzer ..> ErrorMeasurement : <<create>>
+StabilityAnalyzer --> "0..1" ReferencePoint
+StabilityResult --> "0..1" ReferencePoint
+StabilityResult --> "0..1" ErrorMeasurement
+ErrorSelector --> "1" ViewMode
+ErrorSelector --> "*" TechnicalError
+HandstandAnalyzer ..> AnalysisResult : <<create>>
+HandstandAnalyzer ..> LandmarkResult : <<use>>
+HandstandAnalyzer --> "1" ViewMode
+
+LandmarkResult "1" *-- "0..*" Landmark
+AnalysisResult --> "0..*" DetectedError
+DetectedError --> "1" TechnicalError
+
+note bottom of AlignmentThresholds
+  Las cuatro clases de umbrales proceden del archivo de
+  configuración externo (NFR-13). La derivación de los
+  umbrales personalizados a partir de la calibración se
+  recoge en la Figura 4.7.
+end note
+
+@enduml

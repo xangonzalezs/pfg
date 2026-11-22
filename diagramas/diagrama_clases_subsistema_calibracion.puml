@@ -1,0 +1,99 @@
+@startuml clases_calibracion
+title Diagrama de clases de diseño — calibración y validación
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide empty members
+
+class CalibrationService {
+  + reset()
+  + submit(view, landmark_result): bool
+  + captured(view): tuple
+  + is_ready(view): bool
+  + measure(): NeutralPoseMeasurement
+  + complete(user_id, ...): CalibrationProfile
+  + proposed(profile): CalibrationOutcome
+  + validate(profile_id, reviewer_id, note, overrides)
+  + reject(profile_id, reviewer_id, note)
+  + thresholds_for(user_id): tuple
+}
+
+class CalibrationRepository {
+  + create_pending(...): CalibrationProfile
+  + validate(profile_id, ...): CalibrationProfile
+  + reject(profile_id, ...): CalibrationProfile
+  + get(profile_id): CalibrationProfile [0..1]
+  + validated_for(user_id): CalibrationProfile [0..1]
+  + pending_for(user_id): CalibrationProfile [0..1]
+  + history_for(user_id): CalibrationProfile [*]
+  + pending_for_trainer(trainer_id): CalibrationProfile [*]
+  + thresholds_of(profile_id): dict
+  + delete(profile_id): bool
+}
+
+class CalibrationProfile <<dataclass>> {
+  + profile_id, user_id: int
+  + status: CalibrationStatus
+  + created_at: str
+  + neutral_knee_angle_deg: float [0..1]
+  + neutral_back_arch_angle_deg: float [0..1]
+  + neutral_elbow_angle_deg: float [0..1]
+  + legs_trunk_ratio: float [0..1]
+  + shoulder_width_ratio: float [0..1]
+  + frontal_image, lateral_image: str [0..1]
+  + reviewed_by: int [0..1]
+  + reviewed_at, review_note: str [0..1]
+  + adjusted_thresholds: dict
+}
+
+enum CalibrationStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+  SUPERSEDED
+}
+
+class Database {
+  + open()
+  + close()
+  + transaction(): Connection
+}
+
+class AlignmentThresholds <<dataclass>> {
+}
+
+class PoseDetector {
+}
+
+class LandmarkResult <<dataclass>> {
+}
+
+CalibrationService --> "1" CalibrationRepository
+CalibrationService --> "1" PoseDetector
+CalibrationService ..> LandmarkResult : <<use>>
+CalibrationService ..> CalibrationProfile : <<create>>
+CalibrationRepository --> "1" Database
+CalibrationProfile --> CalibrationStatus
+CalibrationProfile ..> AlignmentThresholds : <<use>>
+
+note bottom of CalibrationProfile
+  Los umbrales se derivan de los ángulos neutros,
+  salvo aquellos que el entrenador haya corregido
+  durante la validación, que se conservan en
+  adjusted_thresholds (FR-025). El estado
+  SUPERSEDED retira una calibración vigente cuando
+  otra se valida en su lugar.
+end note
+
+note right of PoseDetector
+  Estas tres clases se detallan
+  en los diagramas anteriores
+end note
+
+@enduml

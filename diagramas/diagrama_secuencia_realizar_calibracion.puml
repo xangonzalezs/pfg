@@ -1,0 +1,66 @@
+@startuml sec_calibrar
+title Realizar la calibración corporal
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Atleta" as A
+participant "CalibrationView" as UI
+participant "FrameSource" as VC
+participant "PoseDetector" as PD
+participant "CalibrationService" as CM
+participant "CalibrationRepository" as DB
+
+A -> UI : iniciar calibración\n(selecciona el modo de vista)
+UI -> VC : abrir la cámara
+UI -> A : indicaciones de colocación
+
+note over UI
+  La pantalla recorre la ventana de captura y
+  entrega el lote ya formado al gestor (véase 4.3.1)
+end note
+
+loop durante la ventana de captura
+  UI -> VC : read()
+  VC --> UI : frame
+  UI -> PD : detect(frame, timestamp_ms)
+  PD --> UI : landmark_result
+  UI -> CM : is_frame_valid_frontal(landmarks)
+  CM --> UI : válido / no válido
+  opt el fotograma es válido
+    UI -> UI : acumular landmark_result\ny conservar la imagen de referencia
+  end
+  UI -> A : realimentación de progreso
+end
+
+UI -> VC : cerrar la cámara
+UI -> CM : compute_frontal_profile(frames)
+
+alt se han acumulado fotogramas suficientes
+
+  CM -> CM : calcular las medianas articulares\ny las proporciones antropométricas
+  CM --> UI : profile_data
+
+  UI -> CM : save_profile(user_id, profile_data, imagen)
+  CM -> DB : get_connection()
+  DB --> CM : connection
+  CM -> CM : registrar la calibración con estado\n"pendiente" y la imagen de pose neutra
+  CM --> UI : calibration_profile
+
+  UI --> A : la calibración queda pendiente de validación
+
+  note right of A
+    FR-018: si existía una calibración validada,
+    sigue aplicándose mientras la nueva está pendiente
+  end note
+
+else fotogramas insuficientes
+
+  CM --> UI : InsufficientFramesError
+  UI --> A : aviso de calibración no completada\ny opción de repetirla
+
+end
+
+@enduml

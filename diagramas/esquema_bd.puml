@@ -1,0 +1,103 @@
+@startuml esquema
+title Esquema físico de la base de datos
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+'skinparam linetype ortho
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 9
+skinparam ArrowFontColor #333333
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam class {
+  BackgroundColor #F2F2F2
+  BorderColor #555555
+  FontColor #000000
+  FontSize 11
+  AttributeFontSize 10
+  AttributeFontColor #000000
+}
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide circle
+hide methods
+
+entity "users" as users {
+  **user_id** : INTEGER <<PK>>
+  --
+  username : TEXT <<UNIQUE>>
+  password_hash : TEXT
+  role : TEXT <<CHECK>>
+  full_name : TEXT
+  email : TEXT <<UNIQUE>>
+  profile_photo_filename : TEXT
+  //assigned_trainer_id// : INTEGER <<FK>>
+  created_at : TEXT
+}
+
+entity "calibration_profiles" as calibration_profiles {
+  **profile_id** : INTEGER <<PK>>
+  --
+  //user_id// : INTEGER <<FK>>
+  created_at : TEXT
+  status : TEXT <<CHECK>>
+  neutral_knee_angle_deg : REAL
+  neutral_back_arch_angle_deg : REAL
+  neutral_elbow_angle_deg : REAL
+  legs_trunk_ratio : REAL
+  shoulder_width_ratio : REAL
+  //reviewed_by// : INTEGER <<FK>>
+  reviewed_at : TEXT
+  review_note : TEXT
+  frontal_image : TEXT
+  lateral_image : TEXT
+}
+
+entity "calibration_thresholds" as calibration_thresholds {
+  **//profile_id//** : INTEGER <<PK, FK>>
+  **threshold_key** : TEXT <<PK>>
+  --
+  value : REAL
+}
+
+entity "sessions" as sessions {
+  **session_id** : INTEGER <<PK>>
+  --
+  //user_id// : INTEGER <<FK>>
+  timestamp : TEXT
+  total_duration_s : REAL
+  total_hold_time_s : REAL
+  hold_attempts : INTEGER
+  mean_alignment_score : REAL
+  view_mode : TEXT <<CHECK>>
+  thresholds_applied : TEXT <<CHECK>>
+}
+
+entity "session_errors" as session_errors {
+  **error_id** : INTEGER <<PK>>
+  --
+  //session_id// : INTEGER <<FK>>
+  error_type : TEXT <<CHECK>>
+  measured_value : REAL
+  threshold_value : REAL
+  offset_s : REAL
+}
+
+note right of calibration_profiles
+  Índices únicos parciales sobre user_id:
+  uno condicionado a status = 'validated'
+  y otro a status = 'pending'. Garantizan
+  a lo sumo una calibración validada y una
+  pendiente por atleta, permitiendo a la vez
+  conservar el histórico de calibraciones.
+end note
+
+users ||--o{ users : "assigned_trainer_id\nON DELETE SET NULL"
+users ||--o{ calibration_profiles : "user_id\nON DELETE CASCADE"
+users |o..o{ calibration_profiles : "reviewed_by\nON DELETE SET NULL"
+users ||--o{ sessions : "user_id\nON DELETE CASCADE"
+calibration_profiles ||--o{ calibration_thresholds : "profile_id\nON DELETE CASCADE"
+sessions ||--o{ session_errors : "session_id\nON DELETE CASCADE"
+
+@enduml

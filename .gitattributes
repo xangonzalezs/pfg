@@ -1,0 +1,14 @@
+# Normalización finales de línea.
+* text=auto eol=lf
+
+# Formatos binarios, que no deben sufrir ninguna conversión.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.task binary
+*.db binary
+*.xlsx binary
+*.pdf binary

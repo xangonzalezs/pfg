@@ -1,0 +1,47 @@
+# Integración continua: ejecuta la suite de pruebas en Windows y en Linux
+# cada vez que se sube código al repositorio.
+
+# Las pruebas no necesitan pantalla, cámara, tarjeta de sonido ni el modelo
+# de MediaPipe: el hardware y el estimador se sustituyen por dobles.
+
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # permite lanzarlo a mano desde  Actions
+
+jobs:
+  pruebas:
+    name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Si falla un sistema, los demás siguen: interesa saber en cuál falla.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v5
+
+      - name: Instalar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # OpenCV necesita libGL al importarse. En Windows ya viene con el sistema.
+      - name: Bibliotecas del sistema para OpenCV (solo Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar las pruebas
+        run: pytest -v

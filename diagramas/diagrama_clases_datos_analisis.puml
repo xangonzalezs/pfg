@@ -1,0 +1,115 @@
+@startuml clases_analisis_datos
+title Diagrama de clases de diseño — modelo de datos del análisis
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide empty members
+skinparam nodesep 20
+skinparam ranksep 40
+
+class LandmarkResult <<dataclass>> {
+  + timestamp_ms: int
+  --
+  + get_landmark(index): Landmark [0..1]
+  + has_detection: bool
+}
+
+class Landmark <<dataclass>> {
+  + index: int
+  + x, y, z: float
+  + visibility: float
+}
+
+class AlignmentReport <<dataclass>> {
+  + score: float [0..1]
+  + segment_deviations: dict
+  + measurements: dict
+  --
+  + is_evaluable: bool
+  + severities: dict
+}
+
+class StabilityResult <<dataclass>> {
+  + is_unstable: bool
+  + dispersion: float [0..1]
+  + threshold: float
+  + history_size: int
+  + reference: ReferencePoint [0..1]
+  + measurement: ErrorMeasurement [0..1]
+  --
+  + is_evaluable: bool
+}
+
+class ErrorMeasurement <<dataclass>> {
+  + error_type: TechnicalError
+  + measured_value: float
+  + threshold_value: float
+  + severity: float
+  --
+  + to_detected_error(): DetectedError
+}
+
+class AnalysisResult <<dataclass>> {
+  + alignment_score: float [0..1]
+  + in_handstand: bool
+  + segment_deviations: dict
+  --
+  + has_errors: bool
+  + error_types: TechnicalError [*]
+  + is_valid: bool
+}
+
+class DetectedError <<dataclass>> {
+  + error_type: TechnicalError
+  + measured_value: float
+  + threshold_value: float
+}
+
+enum TechnicalError {
+  BACK_ARCH
+  PELVIS_POSITION
+  LEGS_NOT_STRAIGHT
+  HEAD_FORWARD
+  ELBOW_NOT_EXTENDED
+  NO_SHRUG
+  LEFT_SHOULDER_LOW
+  RIGHT_SHOULDER_LOW
+  LEFT_HIP_LOW
+  RIGHT_HIP_LOW
+  FEET_NOT_EXTENDED
+  INSTABILITY
+}
+
+enum ReferencePoint {
+  HIPS
+  LEFT_HIP
+  RIGHT_HIP
+  SHOULDERS
+  LEFT_SHOULDER
+  RIGHT_SHOULDER
+}
+
+LandmarkResult "1" *-- "0..*" Landmark
+
+AlignmentReport --> "0..*" ErrorMeasurement
+StabilityResult --> "0..1" ErrorMeasurement
+StabilityResult --> "0..1" ReferencePoint
+ErrorMeasurement --> "1" TechnicalError
+ErrorMeasurement ..> DetectedError : <<create>>
+AnalysisResult --> "0..*" DetectedError
+DetectedError --> "1" TechnicalError
+
+note right of LandmarkResult
+  LandmarkResult es la entrada de los tres
+  analizadores; AlignmentReport y StabilityResult
+  son sus salidas y AnalysisResult la del
+  coordinador, todos de la Figura 4.4a.
+end note
+
+@enduml

@@ -1,0 +1,81 @@
+@startuml navegacion
+title Mapa de navegación de la interfaz
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ArrowColor #666666
+skinparam ArrowFontSize 10
+skinparam state {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  FontColor #000000
+  FontSize 11
+  AttributeFontSize 10
+}
+skinparam StateFontStyle plain
+hide empty description
+
+state "Acceso" as Acceso {
+  state "Inicio de sesión" as Login
+  state "Registro de cuenta" as Registro
+  Login -right[#666666,dashed]-> Registro
+  Registro -left[#666666,dashed]-> Login
+}
+
+state "Atleta" as Atleta {
+  state "Panel del atleta\n(histórico y progreso)" as AtletaHome
+  state "Calibración corporal" as Calib
+  state "Preparación de la sesión\n(modo de vista y encuadre)" as Prep
+  state "Práctica con análisis\ny feedback" as Practica
+  state "Resumen de la sesión" as Resumen
+
+  AtletaHome --> Calib
+  AtletaHome --> Prep
+  Prep --> Practica
+  Practica --> Resumen
+  Resumen -[#666666,dashed]-> AtletaHome
+}
+
+state "Entrenador" as Entrenador {
+  state "Panel del entrenador" as EntrHome
+  state "Cartera de atletas" as Cartera
+  state "Validar calibración\nde un atleta" as Validar
+  state "Revisar sesiones\nde un atleta" as RevSes
+
+  EntrHome --> Cartera
+  Cartera --> Validar
+  Cartera --> RevSes
+}
+
+state "Administrador" as Admin {
+  state "Panel de administración" as AdminHome
+  state "Gestión de cuentas" as Cuentas
+  state "Asignación de atletas\na entrenadores" as Asignar
+
+  AdminHome --> Cuentas
+  AdminHome --> Asignar
+}
+
+note bottom of Admin
+  CU-12, visión ampliada:
+  fuera del alcance implementado
+end note
+
+state "Común a los tres roles\n(accesible desde el panel de cada uno)" as Comun {
+  state "Gestión de perfil" as Perfil
+  state "Configuración" as Config
+  Perfil -right[hidden]-> Config
+}
+
+Login --> AtletaHome
+Login --> EntrHome
+Login --> AdminHome
+
+AtletaHome -right[hidden]-> EntrHome
+EntrHome -right[hidden]-> AdminHome
+
+Resumen -[hidden]-> Perfil
+RevSes -[hidden]-> Config
+Asignar -[hidden]-> Config
+
+@enduml

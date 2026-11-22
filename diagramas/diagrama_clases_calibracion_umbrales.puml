@@ -1,0 +1,74 @@
+@startuml clases_calibracion_umbrales
+title Diagrama de clases de diseño — derivación de umbrales personalizados
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+skinparam nodesep 20
+skinparam ranksep 40
+hide empty members
+
+class personalization <<utility>> {
+  + {static} build_calibrated(base, neutral, limits): CalibrationOutcome
+}
+
+class NeutralAngles <<dataclass>> {
+  + knee_deg: float [0..1]
+  + back_arch_deg: float [0..1]
+  + elbow_deg: float [0..1]
+}
+
+class PersonalizationLimits <<dataclass>> {
+  + min_plausible_deg: float
+  + max_plausible_deg: float
+  + max_threshold_deg: float
+  --
+  + is_plausible(angle_deg): bool
+}
+
+class CalibrationOutcome <<dataclass>> {
+  + thresholds: AlignmentThresholds
+  --
+  + personalized_parameters: str [*]
+  + is_personalized: bool
+}
+
+class ParameterOutcome <<dataclass>> {
+  + status: PersonalizationStatus
+  + threshold: float
+  + neutral_angle_deg: float [0..1]
+  --
+  + is_personalized: bool
+}
+
+class AlignmentThresholds <<dataclass>> {
+}
+
+enum PersonalizationStatus {
+  PERSONALIZED
+  CAPPED
+  UNCHANGED
+  NOT_MEASURED
+  IMPLAUSIBLE
+}
+
+personalization ..> NeutralAngles : <<use>>
+personalization "1" *-- "3" PersonalizationLimits
+personalization ..> CalibrationOutcome : <<create>>
+CalibrationOutcome --> "1" AlignmentThresholds
+CalibrationOutcome --> "3" ParameterOutcome
+ParameterOutcome --> "1" PersonalizationStatus
+
+note bottom of CalibrationOutcome
+  ParameterOutcome explica qué se hizo con cada parámetro
+  personalizable y por qué, de modo que el entrenador pueda
+  revisar la propuesta antes de validarla. NeutralAngles
+  procede de la medición de la Figura 4.7a.
+end note
+
+@enduml

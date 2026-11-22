@@ -1,0 +1,72 @@
+{
+  "stability": {
+    "window_size": 10,
+    "instability_threshold": 0.063,
+    "noise": 0.02
+  },
+  "alignment": {
+    "segment_weights": {
+      "wrists_shoulders": 0.40,
+      "shoulders_hips": 0.30,
+      "hips_knees": 0.20,
+      "knees_ankles": 0.10
+    },
+    "noise_threshold_deg": 2.0,
+    "max_segment_deviation_deg": 12.0,
+    "score_exponent": 1.5,
+    "min_trunk_length": 0.02,
+    "min_pair_width": 0.02,
+    "parameters": {
+      "back_arch": { "threshold": 8.0, "noise": 3.0 },
+      "pelvis_shift": { "threshold": 0.07, "noise": 0.02 },
+      "head_forward": { "threshold": 0.10, "noise": 0.03 },
+      "knee_bend": { "threshold": 10.0, "noise": 3.0 },
+      "leg_tilt": { "threshold": 8.0, "noise": 2.5 },
+      "shoulder_tilt": { "threshold": 8.6, "noise": 1.7 },
+      "hip_tilt": { "threshold": 8.6, "noise": 1.7 },
+      "shrug": { "threshold": 0.30, "noise": 0.22 },
+      "elbow_bend": { "threshold": 20.0, "noise": 8.0 },
+      "foot_extension": { "threshold": 45.0, "noise": 30.0 }
+    }
+  },
+  "handstand": {
+    "order_margin": 0.03,
+    "min_body_length": 0.10,
+    "max_tilt_deg": 12.0,
+    "confirmation_frames": 15,
+    "grace_frames": 2
+  },
+  "calibration": {
+    "min_visibility": 0.5,
+    "min_frames": 10,
+    "min_validity_rate": 0.5
+  },
+  "error_selection": {
+    "min_severity_to_report": 15.0,
+    "hysteresis_factor": 0.7
+  },
+  "feedback": {
+    "confirmation_frames": 3,
+    "grace_frames": 5,
+    "repeat_cooldown_ms": 8000,
+    "not_analyzing_cooldown_ms": 10000,
+    "positive_score_threshold": 80.0
+  },
+  "personalization": {
+    "knee_bend": {
+      "min_plausible_deg": 160.0,
+      "max_plausible_deg": 185.0,
+      "max_threshold_deg": 30.0
+    },
+    "back_arch": {
+      "min_plausible_deg": 165.0,
+      "max_plausible_deg": 185.0,
+      "max_threshold_deg": 20.0
+    },
+    "elbow_bend": {
+      "min_plausible_deg": 165.0,
+      "max_plausible_deg": 185.0,
+      "max_threshold_deg": 30.0
+    }
+  }
+}

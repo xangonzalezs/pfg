@@ -1,0 +1,97 @@
+@startuml sec_practicar
+title Practicar sesión de entrenamiento con feedback correctivo
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+skinparam monochrome false
+
+actor "Atleta" as A
+participant "PracticeView" as UI
+participant "SessionRunner" as SR
+participant "SessionService" as SS
+participant "FrameSource" as VC
+participant "PoseDetector" as PD
+participant "HandstandAnalyzer" as HA
+participant "FeedbackEngine" as FE
+participant "AudioPlayer" as AP
+participant "SessionRepository" as ST
+
+== Preparación ==
+
+A -> UI : seleccionar modo de vista
+A -> UI : iniciar sesión
+UI -> UI : rebuild_for_view(view_mode)
+note right of UI : La vista rige toda la sesión y se\nfija al empezar, no antes (BR-06)
+UI -> SR : start()
+activate SR
+SR -> SR : lanzar hilo de captura
+deactivate SR
+
+== Ejecución ==
+
+par Hilo de captura
+  loop mientras la sesión está activa
+    SR -> VC : read()
+    VC --> SR : captured_frame
+    SR -> PD : detect(image, timestamp_ms)
+    PD --> SR : landmark_result
+    SR -> SS : process(landmark_result)
+    activate SS
+    SS -> HA : analyze(landmark_result)
+    HA --> SS : analysis_result
+
+    alt visibilidad insuficiente
+      SS -> FE : not_analyzing(timestamp_ms)
+      FE -> AP : play(aviso de postura no evaluable)
+      note right of FE : FR-011: el silencio no debe\ninterpretarse como ejecución correcta
+    else el atleta está en pino
+      SS -> FE : process(analysis_result, timestamp_ms)
+      activate FE
+      FE -> FE : confirmar persistencia del error
+      FE -> FE : seleccionar el de mayor prioridad
+      opt procede emitir y no hay audio en curso
+        FE -> AP : play(locución del error)
+      end
+      FE --> SS : feedback_result
+      deactivate FE
+    end
+
+    opt finaliza una fase de mantenimiento
+      SS -> FE : hold_ended(mean_score, timestamp_ms)
+      opt la puntuación media supera el umbral
+        FE -> AP : play(mensaje de refuerzo)
+      end
+    end
+
+    SS --> SR : frame_outcome
+    deactivate SS
+    SR -> SR : publicar RunnerFrame\n(imagen y resultado, bajo cerrojo)
+  end
+else Hilo de la interfaz
+  loop cada ~33 ms, mientras la sesión está activa
+    UI -> SR : latest()
+    SR --> UI : runner_frame
+    UI -> UI : pintar esqueleto coloreado,\npuntuación y avisos de estado
+  end
+end
+
+== Cierre ==
+
+A -> UI : detener sesión
+UI -> SR : stop()
+activate SR
+SR -> SR : terminar el hilo de captura
+deactivate SR
+UI -> SS : finish()
+activate SS
+note right of SS : El registro lo ejecuta el hilo de la\ninterfaz: las conexiones de SQLite\npertenecen al hilo que las abrió
+SS -> ST : save(session_record)
+ST --> SS : session_id
+SS --> UI : session_id
+deactivate SS
+UI -> UI : mostrar el resumen de la sesión
+UI --> A : métricas, evolución de la puntuación\ny errores registrados
+
+@enduml

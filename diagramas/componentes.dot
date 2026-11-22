@@ -1,0 +1,143 @@
+@startdot
+digraph componentes {
+  graph [rankdir=TB, splines=ortho,
+         nodesep=0.45, ranksep=0.8, fontname="Helvetica", fontsize=13,
+         bgcolor="white", pad=0.25];
+  node  [shape=box, style="filled", fontname="Helvetica", fontsize=11,
+         color="#666666", penwidth=1.0, margin="0.18,0.11", height=0.55];
+  edge  [color="#666666", arrowsize=0.75, penwidth=1.0];
+
+  subgraph cluster_ui {
+    label="  Interfaz de usuario  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    AuthScreens  [label="«component»\nLoginView\nRegisterView", fillcolor="#C3D7E8"];
+    App          [label="«component»\nApp",            fillcolor="#C3D7E8"];
+    PracticeView [label="«component»\nPracticeView",   fillcolor="#C3D7E8"];
+    CalibView    [label="«component»\nCalibrationView", fillcolor="#C3D7E8"];
+    SummaryView  [label="«component»\nSummaryView",    fillcolor="#C3D7E8"];
+    HomeViews    [label="«component»\nAthleteHomeView\nTrainerHomeView", fillcolor="#C3D7E8"];
+    ProfileView  [label="«component»\nProfileView",    fillcolor="#C3D7E8"];
+  }
+
+  subgraph cluster_srv {
+    label="  Servicios de aplicación  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    AccountSrv   [label="«component»\nAccountService",   fillcolor="#F7D9A0"];
+    Permissions  [label="«component»\nPermissionChecker", fillcolor="#F7D9A0"];
+    SessionSrv   [label="«component»\nSessionService",   fillcolor="#F7D9A0"];
+    SessionRun   [label="«component»\nSessionRunner",    fillcolor="#F7D9A0"];
+    CalibSrv     [label="«component»\nCalibrationService", fillcolor="#F7D9A0"];
+    { rank=same; AccountSrv; Permissions; }
+  }
+
+  subgraph cluster_cap {
+    label="  Captura de pose  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    PoseDetector [label="«component»\nPoseDetector",     fillcolor="#C3D7E8"];
+    CameraCapture [label="«component»\nCameraCapture",   fillcolor="#C3D7E8"];
+    VideoFile    [label="«component»\nVideoFileCapture", fillcolor="#F7D9A0"];
+    { rank=same; PoseDetector; VideoFile; }
+  }
+
+  subgraph cluster_ana {
+    label="  Lógica de negocio  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    HandstandAn [label="«component»\nHandstandAnalyzer", fillcolor="#F7D9A0"];
+    HandstandDet[label="«component»\nHandstandDetector", fillcolor="#F7D9A0"];
+    AlignmentAn [label="«component»\nAlignmentAnalyzer", fillcolor="#F7D9A0"];
+    StabilityAn [label="«component»\nStabilityAnalyzer", fillcolor="#F7D9A0"];
+    ErrorSel    [label="«component»\nErrorSelector",     fillcolor="#F7D9A0"];
+    { rank=same; HandstandDet; AlignmentAn; StabilityAn; ErrorSel; }
+    Landmarks   [label="«component»\nlandmarks",         fillcolor="#C3D7E8"];
+    Geometry    [label="«component»\ngeometry",          fillcolor="#F2F2F2"];
+    { rank=same; Landmarks; Geometry; }
+  }
+
+  subgraph cluster_fb {
+    label="  Feedback  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    FeedbackEngine [label="«component»\nFeedbackEngine", fillcolor="#F7D9A0"];
+    AudioPlayer    [label="«component»\nAudioPlayer",    fillcolor="#C3D7E8"];
+  }
+
+  subgraph cluster_per {
+    label="  Persistencia y configuración  "; labelloc="t"; labeljust="l";
+    style="rounded"; color="#AAAAAA"; fontsize=12; fontcolor="#333333"; margin=14;
+    Thresholds   [label="«artifact»\numbrales.json",    fillcolor="#F7D9A0", shape=note];
+    ThresholdsMod[label="«component»\nthresholds",      fillcolor="#F7D9A0"];
+    Personalize  [label="«component»\npersonalization",  fillcolor="#F7D9A0"];
+    SessionRepo  [label="«component»\nSessionRepository", fillcolor="#F7D9A0"];
+    CalibRepo    [label="«component»\nCalibrationRepository", fillcolor="#F7D9A0"];
+    UserRepo     [label="«component»\nUserRepository",  fillcolor="#F7D9A0"];
+    DatabaseC    [label="«component»\nDatabase",        fillcolor="#F2F2F2"];
+    { rank=same; SessionRepo; CalibRepo; UserRepo; }
+  }
+
+
+  // orden vertical de las capas
+  App -> SessionSrv [style=invis];
+  SessionRun -> VideoFile [style=invis, weight=20];
+  CameraCapture -> HandstandAn [style=invis, weight=20];
+  AlignmentAn -> StabilityAn [style=invis, weight=20];
+  PoseDetector -> HandstandAn [style=invis, weight=20];
+  HandstandAn -> FeedbackEngine [style=invis, weight=10];
+  FeedbackEngine -> DatabaseC [style=invis, weight=10];
+  VideoFile -> CameraCapture [style=invis];
+
+  AuthScreens  -> AccountSrv;
+  App          -> SessionRun;
+  PracticeView -> SessionRun;
+  SummaryView  -> SessionRepo;
+  CalibView    -> CalibSrv;
+  ProfileView  -> AccountSrv;
+  HomeViews    -> SessionRepo;
+  HomeViews    -> Permissions;
+
+  CalibView -> PoseDetector [style=dashed];
+  CalibView -> CameraCapture [style=dashed];
+
+  SessionRun -> SessionSrv;
+  SessionRun -> PoseDetector;
+  SessionRun -> CameraCapture;
+  SessionRun -> VideoFile;
+  CalibSrv   -> PoseDetector;
+  SessionSrv -> HandstandAn;
+  SessionSrv -> FeedbackEngine;
+  SessionSrv -> SessionRepo;
+  CalibSrv   -> Geometry;
+  CalibSrv   -> CalibRepo;
+  CalibSrv   -> Personalize;
+  AccountSrv -> UserRepo;
+  Permissions -> UserRepo;
+  Personalize  -> ThresholdsMod [style=dotted];
+  ThresholdsMod -> Thresholds  [style=dotted];
+  CalibSrv   -> HandstandAn [style=dashed, constraint=false, xlabel=<<FONT POINT-SIZE="9">«inyecta umbrales»</FONT>>, fontname="Helvetica"];
+
+  HandstandAn -> HandstandDet;
+  HandstandAn -> AlignmentAn;
+  HandstandAn -> StabilityAn;
+  HandstandAn -> ErrorSel;
+  HandstandDet -> Landmarks;
+  HandstandDet -> Geometry;
+  AlignmentAn -> Landmarks;
+  StabilityAn -> Landmarks;
+  AlignmentAn -> Geometry;
+  StabilityAn -> Geometry;
+  Landmarks   -> Geometry;
+  AlignmentAn -> ThresholdsMod  [style=dotted];
+
+  FeedbackEngine -> AudioPlayer;
+  SessionRepo    -> DatabaseC;
+  CalibRepo      -> DatabaseC;
+  UserRepo       -> DatabaseC;
+
+  Leyenda [shape=plaintext, style="", fillcolor="white", label=<
+    <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="6" CELLPADDING="4" COLOR="#AAAAAA">
+      <TR><TD COLSPAN="2" ALIGN="LEFT"><FONT POINT-SIZE="11" COLOR="#333333">Naturaleza (Tabla 4.1)</FONT></TD></TR>
+      <TR><TD BGCOLOR="#F2F2F2" WIDTH="26"></TD><TD ALIGN="LEFT"><FONT POINT-SIZE="10">Reutilizado</FONT></TD></TR>
+      <TR><TD BGCOLOR="#C3D7E8" WIDTH="26"></TD><TD ALIGN="LEFT"><FONT POINT-SIZE="10">Adaptado</FONT></TD></TR>
+      <TR><TD BGCOLOR="#F7D9A0" WIDTH="26"></TD><TD ALIGN="LEFT"><FONT POINT-SIZE="10">Desarrollado</FONT></TD></TR>
+    </TABLE>>];
+  DatabaseC -> Leyenda [style=invis, weight=10];
+}
+@enddot

@@ -1,0 +1,105 @@
+@startuml clases_calibracion_medicion
+title Diagrama de clases de diseño — medición de la calibración
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+skinparam nodesep 20
+skinparam ranksep 40
+hide empty members
+
+class CalibrationService {
+  + submit(view, landmark_result): bool
+  + is_ready(view): bool
+  + measure(): NeutralPoseMeasurement
+  + complete(user_id, ...): CalibrationProfile
+  + proposed(profile): CalibrationOutcome
+  + validate(profile_id, reviewer_id, note, overrides)
+  + thresholds_for(user_id): tuple
+}
+
+class neutral_pose <<utility>> {
+  + {static} is_frame_valid(result, view, thresholds): bool
+  + {static} measure_neutral_pose(lateral, frontal, thresholds): NeutralPoseMeasurement
+}
+
+class CalibrationThresholds <<dataclass>> {
+  + min_visibility: float
+  + min_frames: int
+  + min_validity_rate: float
+}
+
+class NeutralPoseMeasurement <<dataclass>> {
+  + knee_deg: float [0..1]
+  + back_arch_deg: float [0..1]
+  + elbow_deg: float [0..1]
+  + legs_trunk_ratio: float [0..1]
+  + shoulder_width_ratio: float [0..1]
+  --
+  + neutral_angles: NeutralAngles
+}
+
+class CaptureSummary <<dataclass>> {
+  + total_frames: int
+  + valid_frames: int
+  --
+  + validity_rate: float
+}
+
+class CalibrationCaptureError <<exception>> {
+  + view: ViewMode
+  + summary: CaptureSummary
+}
+
+class CalibrationProfile <<dataclass>> {
+  + profile_id, user_id: int
+  + status: str
+  + measurement: NeutralPoseMeasurement
+  + frontal_image, lateral_image: str [0..1]
+  + reviewed_by: int [0..1]
+  + reviewed_at, review_note: str [0..1]
+  + adjusted_thresholds: dict
+}
+
+class CalibrationRepository {
+  + create_pending(...): CalibrationProfile
+  + validate(profile_id, ...): CalibrationProfile
+  + thresholds_of(profile_id): dict
+}
+
+class PoseDetector {
+}
+
+CalibrationService --> "1" CalibrationRepository
+CalibrationService --> "1" PoseDetector
+CalibrationService ..> neutral_pose : <<use>>
+CalibrationService ..> CalibrationProfile : <<create>>
+
+neutral_pose "1" *-- CalibrationThresholds
+neutral_pose ..> NeutralPoseMeasurement : <<create>>
+neutral_pose ..> CalibrationCaptureError : <<create>>
+NeutralPoseMeasurement --> "2" CaptureSummary
+CalibrationCaptureError --> "1" CaptureSummary
+CalibrationProfile --> "1" NeutralPoseMeasurement
+
+note bottom of neutral_pose
+  Las medidas sagitales —arqueo dorsal, extensión de
+  rodilla y de codo— proceden de la captura lateral,
+  único plano en que se observan sin escorzo. Las
+  proporciones corporales proceden de la frontal.
+end note
+
+note right of CalibrationProfile
+  La derivación de los umbrales propuestos a partir
+  de neutral_angles se recoge en la Figura 4.7b.
+  Los ajustes que el entrenador introduce al validar
+  se conservan en adjusted_thresholds, y el repositorio
+  los persiste en la tabla calibration_thresholds.
+end note
+
+@enduml

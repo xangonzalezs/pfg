@@ -1,0 +1,160 @@
+@startuml clases_analisis_componentes
+title Diagrama de clases de diseño — componentes de análisis
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide empty members
+skinparam nodesep 20
+skinparam ranksep 40
+
+class HandstandAnalyzer {
+  + {static} from_thresholds(thresholds, view_mode): HandstandAnalyzer
+  + analyze(landmark_result): AnalysisResult
+  + set_view_mode(view_mode)
+  + apply_thresholds(thresholds)
+  + reset()
+  + view_mode: ViewMode
+  + handstand_state: HandstandState
+}
+
+class HandstandDetector {
+  + update(landmark_result): HandstandState
+  + reset()
+  + in_handstand: bool
+}
+
+class HandstandState <<dataclass>> {
+  + is_inverted: bool
+  + in_handstand: bool
+  + body_length: float [0..1]
+  + tilt_deg: float [0..1]
+  + confirming_frames: int
+  --
+  + is_confirming: bool
+}
+
+class AlignmentAnalyzer {
+  + view_mode: ViewMode
+  --
+  + analyze(landmark_result): AlignmentReport
+  + set_view_mode(view_mode)
+}
+
+class StabilityAnalyzer {
+  + update(landmark_result): StabilityResult
+  + reset()
+  + history_size: int
+  + reference: ReferencePoint [0..1]
+}
+
+class ErrorSelector {
+  + select(severities): TechnicalError [*]
+  + reset()
+  + is_active(error): bool
+  + relevant_errors: TechnicalError [*]
+  + view_mode: ViewMode
+  + {static} severity_from_metric(value, threshold, noise): float
+}
+
+class HandstandThresholds <<dataclass>> {
+  + order_margin: float
+  + min_body_length: float
+  + max_tilt_deg: float
+  + confirmation_frames: int
+  + grace_frames: int
+}
+
+class AlignmentThresholds <<dataclass>> {
+  + segment_weights: dict
+  + noise_threshold_deg: float
+  + max_segment_deviation_deg: float
+  + score_exponent: float
+  + min_trunk_length: float
+  + min_pair_width: float
+  + parameters: dict
+}
+
+class ParameterThreshold <<dataclass>> {
+  + threshold: float
+  + noise: float
+}
+
+class StabilityThresholds <<dataclass>> {
+  + window_size: int
+  + instability_threshold: float
+  + noise: float
+}
+
+class ErrorSelectionThresholds <<dataclass>> {
+  + min_severity_to_report: float
+  + hysteresis_factor: float
+}
+
+class landmarks <<utility>> {
+  + {static} as_point(landmark): Point
+  + {static} visible(result, index): Landmark [0..1]
+  + {static} visible_pair(result, left, right): Landmark [0..2]
+  + {static} joint_point(result, joint): Point [0..1]
+  + {static} joint_points(result): Point [0..*]
+}
+
+class geometry <<utility>> {
+  + {static} midpoint(a, b): Point
+  + {static} centroid(points): Point
+  + {static} distance(a, b): float
+  + {static} angle_at(vertex, a, b): float [0..1]
+  + {static} deviation_from_vertical(top, bottom): float
+  + {static} deviation_from_horizontal(a, b): float
+  + {static} distance_to_line(point, start, end): float
+}
+
+enum ViewMode {
+  LATERAL
+  FRONTAL
+}
+
+HandstandAnalyzer "1" *-- HandstandDetector
+HandstandAnalyzer "1" *-- AlignmentAnalyzer
+HandstandAnalyzer "1" *-- StabilityAnalyzer
+HandstandAnalyzer "1" *-- ErrorSelector
+HandstandAnalyzer --> "1" HandstandState
+HandstandAnalyzer --> "1" ViewMode
+
+HandstandDetector "1" *-- HandstandThresholds
+HandstandDetector ..> HandstandState : <<create>>
+AlignmentAnalyzer "1" *-- AlignmentThresholds
+AlignmentAnalyzer --> "1" ViewMode
+StabilityAnalyzer "1" *-- StabilityThresholds
+ErrorSelector "1" *-- ErrorSelectionThresholds
+ErrorSelector --> "1" ViewMode
+AlignmentThresholds "1" *-- "10" ParameterThreshold
+
+HandstandDetector ..> landmarks : <<use>>
+HandstandDetector ..> geometry : <<use>>
+AlignmentAnalyzer ..> landmarks : <<use>>
+AlignmentAnalyzer ..> geometry : <<use>>
+StabilityAnalyzer ..> landmarks : <<use>>
+StabilityAnalyzer ..> geometry : <<use>>
+landmarks ..> geometry : <<use>>
+
+note bottom of AlignmentThresholds
+  Las cuatro clases de umbrales proceden del archivo de
+  configuración externo (NFR-13). La derivación de los
+  personalizados a partir de la calibración se recoge
+  en la Figura 4.7.
+end note
+
+note right of HandstandAnalyzer
+  Los tipos que estos componentes consumen y
+  producen —LandmarkResult, AlignmentReport,
+  StabilityResult, ErrorMeasurement, TechnicalError
+  y AnalysisResult— se detallan en la Figura 4.4b.
+end note
+
+@enduml

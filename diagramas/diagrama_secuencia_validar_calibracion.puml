@@ -1,0 +1,88 @@
+@startuml sec_validar
+title Validar la calibración de un atleta
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Entrenador" as E
+participant "ReviewCalibrationView" as UI
+participant "CalibrationService" as CM
+participant "CalibrationRepository" as DB
+
+E -> UI : abrir la cola de calibraciones pendientes
+UI -> CM : get_pending_profiles(trainer_id)
+activate CM
+CM -> DB : get_connection()
+DB --> CM : connection
+CM -> CM : consultar las calibraciones pendientes\nde los atletas de su cartera
+CM --> UI : lista de calibraciones
+deactivate CM
+
+note right of CM
+  BR-02: un entrenador solo puede validar
+  calibraciones de atletas de su cartera
+end note
+
+alt la cola está vacía
+
+  UI --> E : no hay calibraciones pendientes
+
+else hay calibraciones pendientes
+
+  UI --> E : atleta, modo de vista y fecha de cada una
+  E -> UI : seleccionar una calibración
+
+  UI -> CM : load_profile(profile_id)
+  activate CM
+  CM -> DB : consultar el perfil y sus umbrales
+  DB --> CM : datos de la calibración
+  CM --> UI : calibration_profile
+  deactivate CM
+
+  UI --> E : imágenes de pose neutra\ny umbrales propuestos
+
+  opt el entrenador ajusta los umbrales
+    E -> UI : modificar valores
+    note right of UI
+      FR-025: los valores ajustados se conservan
+      como umbrales personalizados del atleta
+    end note
+  end
+
+  alt el entrenador valida
+
+    E -> UI : validar
+    UI -> CM : review_profile(profile_id, reviewer_id,\n"validada", nota, umbrales_ajustados)
+    activate CM
+    CM -> DB : marcar como validada y registrar\nrevisor, marca temporal y nota
+    CM -> DB : guardar los umbrales ajustados
+    CM --> UI : calibration_profile
+    deactivate CM
+    UI --> E : la calibración pasa a ser la vigente del atleta
+
+  else el entrenador rechaza
+
+    E -> UI : rechazar
+    UI -> CM : review_profile(profile_id, reviewer_id,\n"rechazada", nota, --)
+    activate CM
+    CM -> DB : marcar como rechazada y registrar la decisión
+    CM --> UI : calibration_profile
+    deactivate CM
+    UI --> E : el atleta podrá recalibrar (CU-03)
+
+  else el entrenador sale sin decidir
+
+    UI --> E : la calibración sigue pendiente
+
+  end
+
+end
+
+note over DB
+  La decisión queda registrada para su
+  auditoría posterior (CU-12)
+end note
+
+@enduml

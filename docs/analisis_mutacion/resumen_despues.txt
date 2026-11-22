@@ -1,0 +1,4 @@
+mutmut 3.8.1 sobre core/analysis, 917 pruebas
+1159 mutantes   muertos 1027   supervivientes 132   (88,6 %)
+123 mutaciones/segundo
+Reproducido desde cero (mutants/ y .mutmut-cache borrados): lista identica.

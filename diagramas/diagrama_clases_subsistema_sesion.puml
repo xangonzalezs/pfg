@@ -1,0 +1,159 @@
+@startuml clases_sesion
+title Diagrama de clases de diseño — sesión y persistencia
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ClassBackgroundColor #F2F2F2
+skinparam ClassBorderColor #555555
+skinparam ArrowColor #555555
+skinparam NoteBackgroundColor #FFFFFF
+skinparam NoteBorderColor #AAAAAA
+skinparam StereotypeCBackgroundColor #FFFFFF
+hide empty members
+
+class SessionService {
+  + prepare()
+  + start()
+  + process(landmark_result): FrameOutcome
+  + note_failure(): bool
+  + finish(failed): int [0..1]
+  + state: SessionState
+  + metrics: SessionMetrics
+  + view_mode: ViewMode
+}
+
+class SessionRunner {
+  + start()
+  + stop(timeout)
+  + latest(): RunnerFrame [0..1]
+  + is_running: bool
+  + failure: str [0..1]
+  + source_exhausted: bool
+}
+
+enum SessionState {
+  IDLE
+  PREPARING
+  ACTIVE
+  FINISHED
+  FAILED
+}
+
+class RunnerFrame <<dataclass>> {
+  + image: ndarray
+  + outcome: FrameOutcome
+}
+
+class FrameOutcome <<dataclass>> {
+  + landmark_result: LandmarkResult
+  + analysis: AnalysisResult
+  + feedback: FeedbackResult
+  + hold_time_s: float
+  + total_hold_time_s: float
+  + is_framed: bool
+}
+
+class SessionMetrics <<dataclass>> {
+  + total_hold_ms: int
+  + hold_attempts: int
+  + scores: list
+  + occurrences: list
+  + mean_score(): float [0..1]
+}
+
+class SessionRecord <<dataclass>> {
+  + session_id: int
+  + user_id: int
+  + timestamp: str
+  + total_duration_s: float
+  + total_hold_time_s: float
+  + hold_attempts: int
+  + view_mode: ViewMode
+  + thresholds_applied: ThresholdsApplied
+  + mean_alignment_score: float [0..1]
+  + errors: list
+}
+
+class ErrorOccurrence <<dataclass>> {
+  + error_type: TechnicalError
+  + measured_value: float
+  + threshold_value: float
+  + offset_s: float
+  + error_id: int [0..1]
+}
+
+class SessionRepository {
+  + save(...): int
+  + get(session_id): SessionRecord [0..1]
+  + recent_for(user_id, limit): SessionRecord [*]
+  + count_for(user_id): int
+  + errors_of(session_id): ErrorOccurrence [*]
+  + error_counts_for(user_id): dict
+  + delete(session_id): bool
+}
+
+class Database {
+  + open()
+  + close()
+  + transaction(): Connection
+  + connection: Connection
+  + is_open: bool
+  + schema_version: int
+}
+
+interface FrameSource <<protocol>> {
+  + open()
+  + read(): CapturedFrame
+  + close()
+}
+
+class HandstandAnalyzer {
+}
+class FeedbackEngine {
+}
+class PoseDetector {
+}
+class CameraCapture {
+}
+class VideoFileCapture {
+}
+
+HandstandAnalyzer -[hidden]down- FeedbackEngine
+PoseDetector -[hidden]down- FrameSource
+
+SessionRunner --> "1" SessionService
+SessionRunner --> "1" FrameSource
+SessionRunner --> "1" PoseDetector
+SessionRunner ..> RunnerFrame : <<create>>
+
+SessionService --> "1" HandstandAnalyzer
+SessionService --> "1" FeedbackEngine
+SessionService --> "1" SessionRepository
+SessionService "1" *-- SessionMetrics
+SessionService ..> SessionState
+SessionService ..> FrameOutcome : <<create>>
+SessionService ..> ErrorOccurrence : <<create>>
+
+FrameSource <|.. CameraCapture
+FrameSource <|.. VideoFileCapture
+
+RunnerFrame --> "1" FrameOutcome
+SessionMetrics --> "0..*" ErrorOccurrence
+SessionRecord --> "0..*" ErrorOccurrence
+SessionRepository ..> SessionRecord : <<use>>
+SessionRepository --> "1" Database
+
+note bottom of SessionRunner
+  El hilo de captura. Publica la imagen y su
+  resultado juntos, y no accede a la base de
+  datos: las conexiones pertenecen al hilo
+  que las abrió.
+end note
+
+note bottom of SessionService
+  Sin hilo y sin reloj: recibe un fotograma
+  ya estimado y devuelve lo que la interfaz
+  debe pintar.
+end note
+
+@enduml
