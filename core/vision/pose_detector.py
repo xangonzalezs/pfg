@@ -101,19 +101,18 @@ class PoseDetector:
 
         self._last_timestamp_ms = timestamp_ms
 
-        return LandmarkResult(
-            landmarks=[
-                Landmark(
-                    index=index,
-                    x=float(point.x),
-                    y=float(point.y),
-                    z=float(getattr(point, "z", 0.0)),
-                    visibility=float(getattr(point, "visibility", 0.0)),
-                )
-                for index, point in enumerate(landmarks)
-            ],
-            timestamp_ms=timestamp_ms,
-        )
+        lista = []
+        for index, point in enumerate(landmarks):
+            nuevo = Landmark(
+                index=index,
+                x=float(point.x),
+                y=float(point.y),
+                z=float(getattr(point, "z", 0.0)),
+                visibility=float(getattr(point, "visibility", 0.0)),
+            )
+            lista.append(nuevo)
+
+        return LandmarkResult(landmarks=lista, timestamp_ms=timestamp_ms)
 
     def reset(self) -> None:
         # Olvida la última marca de tiempo, para empezar una fuente nueva.

@@ -113,9 +113,7 @@ class SessionRunner:
                 return
 
             try:
-                landmark_result = self._detector.detect(
-                    frame.image, frame.timestamp_ms
-                )
+                landmark_result = self._detector.detect(frame.image, frame.timestamp_ms)
             except PoseDetectorError as error:
                 if not self._service.note_failure():
                     self._note(failure=str(error))
